@@ -2,65 +2,38 @@
 var express = require('express'),
     app     = express(),
     morgan  = require('morgan');
-    
+
+require('dotenv').config();
+
 Object.assign=require('object-assign')
 
 app.engine('html', require('ejs').renderFile);
 app.use(morgan('combined'))
 
 var port = process.env.PORT || process.env.OPENSHIFT_NODEJS_PORT || 8080,
-    ip   = process.env.IP   || process.env.OPENSHIFT_NODEJS_IP || '0.0.0.0',
-    mongoURL = process.env.OPENSHIFT_MONGODB_DB_URL || process.env.MONGO_URL,
-    mongoURLLabel = "";
+    ip   = process.env.IP   || process.env.OPENSHIFT_NODEJS_IP || '0.0.0.0';
 
-if (mongoURL == null && process.env.DATABASE_SERVICE_NAME) {
-  var mongoServiceName = process.env.DATABASE_SERVICE_NAME.toUpperCase(),
-      mongoHost = process.env[mongoServiceName + '_SERVICE_HOST'],
-      mongoPort = process.env[mongoServiceName + '_SERVICE_PORT'],
-      mongoDatabase = process.env[mongoServiceName + '_DATABASE'],
-      mongoPassword = process.env[mongoServiceName + '_PASSWORD']
-      mongoUser = process.env[mongoServiceName + '_USER'];
-
-  if (mongoHost && mongoPort && mongoDatabase) {
-    mongoURLLabel = mongoURL = 'mongodb://';
-    if (mongoUser && mongoPassword) {
-      mongoURL += mongoUser + ':' + mongoPassword + '@';
-    }
-    // Provide UI label that excludes user id and pw
-    mongoURLLabel += mongoHost + ':' + mongoPort + '/' + mongoDatabase;
-    mongoURL += mongoHost + ':' +  mongoPort + '/' + mongoDatabase;
-
-  }
-}
-var db = null,
-    dbDetails = new Object();
-
-var initDb = function(callback) {
-  if (mongoURL == null) return;
-
-  var mongodb = require('mongodb');
-  if (mongodb == null) return;
-
-  mongodb.connect(mongoURL, function(err, conn) {
-    if (err) {
-      callback(err);
-      return;
-    }
-
-    db = conn;
-    dbDetails.databaseName = db.databaseName;
-    dbDetails.url = mongoURLLabel;
-    dbDetails.type = 'MongoDB';
-
-    console.log('Connected to MongoDB at: %s', mongoURL);
-  });
+// Setup database communication
+var connection = require('./mongo.js');
+var initDb = connection.initDb;
+var getDbData = connection.getDbData;
+var db = null;
+var dbDetails = {};
+    
+var setDbData = function() {
+  var dbRet = getDbData();
+  db = dbRet[0];
+  dbDetails = dbRet[1];
 };
+    
 
 app.get('/', function (req, res) {
+  setDbData();
   // try to initialize the db on every request if it's not already
   // initialized.
   if (!db) {
     initDb(function(err){});
+    setDbData();
   }
   if (db) {
     var col = db.collection('counts');
@@ -78,10 +51,12 @@ app.get('/', function (req, res) {
 });
 
 app.get('/pagecount', function (req, res) {
+  setDbData();
   // try to initialize the db on every request if it's not already
   // initialized.
   if (!db) {
     initDb(function(err){});
+    setDbData();
   }
   if (db) {
     db.collection('counts').count(function(err, count ){
@@ -98,6 +73,7 @@ app.use(function(err, req, res, next){
   res.status(500).send('Something bad happened!');
 });
 
+// connect to database
 initDb(function(err){
   console.log('Error connecting to Mongo. Message:\n'+err);
 });

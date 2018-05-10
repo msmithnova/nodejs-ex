@@ -4,11 +4,11 @@
   "description": "Node.js sample app for OpenShift 3",
   "main": "server.js",
   "dependencies": {
-    "chai": "^3.5.0",
-    "chai-http": "^2.0.1",
+    "chai": "^4.1.2",
+    "chai-http": "^4.0.0",
     "ejs": "^2.4.1",
     "express": "^4.13.4",
-    "mocha": "^4.1.0",
+    "mocha": "^3.5.3",
     "mongodb": "^2.1.16",
     "morgan": "^1.7.0",
     "object-assign":"4.1.0"
